@@ -1,7 +1,7 @@
 ### Password Generator ###
 ### Ray Smalley        ###
 ### Created 01.29.18   ###
-### Updated 08.01.24   ###
+### Updated 12.08.25   ###
 
 
 # Disable progress bar for faster downloads
@@ -28,32 +28,90 @@ function CheckLogSize {
 function Download {
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory)][string]$URL,
-	    [Parameter(Mandatory)][string]$Name,
-	    [Parameter()][string]$Filename = $(if ($URL -match "\....$") {(Split-Path $URL -Leaf)}),
+        [Parameter(Mandatory)][ValidateNotNullOrEmpty()][string]$URL,
+        [Parameter(Mandatory)][ValidateNotNullOrEmpty()][string]$Name,
+        [Parameter()][string]$Filename = $(if ($URL -match "\....$") {(Split-Path $URL -Leaf)}),
         [Parameter()][string]$OutputPath = $env:TEMP,
         [Parameter()][switch]$Force,
-        [Parameter()][switch]$Quiet
-	)
+        [Parameter()][switch]$Quiet,
+        # Re-download if the existing file is older than this many days (integer)
+        # 0 or negative = disabled
+        [Parameter()][int]$ForceIfOlderThanDays = 0
+    )
+
     if (!$Filename) {
         Write-Warning "Filename parameter needed. Download failed."
-        Write-Host
-        Break
+        return
     }
-    $Output = $OutputPath + "\$Filename"
-    $OutputName = $Name -replace ' ',''
-    $FriendlyName = $Name -replace ' ','' -csplit '(?=[A-Z])' -ne '' -join ' '
-    $Error.Clear()
-    if ($URL -match "php") {$URL = (Invoke-WebRequest $URL).Content | Select-String -Pattern "href=`"(.*/$Filename)`"" | ForEach-Object { $_.Matches.Groups[1].Value }}
-    if (!(Test-Path $Output) -or ($Force -eq $true)) {
-        if (!$Quiet) {Write-Host "Downloading $FriendlyName..."`n}
-        (New-Object System.Net.WebClient).DownloadFile($URL, $Output)
-        if ($Error.count -gt 0) {Write-Host "Retrying..."`n; $Error.Clear(); (New-Object System.Net.WebClient).DownloadFile($URL, $Output)}
-        if ($Error.count -gt 0) {Write-Warning "$Name download failed";Write-Host}
+
+    $Output       = Join-Path -Path $OutputPath -ChildPath $Filename
+    $OutputName   = $Name -replace ' ', ''
+    $FriendlyName = ($Name -replace ' ', '') -csplit '(?=[A-Z])' -ne '' -join ' '
+
+    if ($URL -match "php") {
+        try {
+            $URL = (New-Object System.Net.WebClient).DownloadString($URL) |
+                   Select-String -Pattern "href=`"(.*/$Filename)`"" |
+                   ForEach-Object { $_.Matches.Groups[1].Value }
+        } catch {
+            Write-Warning "Failed to parse URL from PHP content."
+            return
+        }
+    }
+
+    # Decide whether we need to download
+    $needsDownload = $false
+
+    if (!(Test-Path $Output) -or $Force) {
+        # No file yet, or explicit -Force
+        $needsDownload = $true
+    }
+    elseif ($ForceIfOlderThanDays -gt 0) {
+        # File exists; check its age in days
+        try {
+            $file = Get-Item -LiteralPath $Output
+            $fileAgeDays = ((Get-Date) - $file.LastWriteTime).TotalDays
+
+            if ($fileAgeDays -gt $ForceIfOlderThanDays) {
+                $needsDownload = $true
+                if (!$Quiet) {
+                    Write-Host "$FriendlyName is older than $ForceIfOlderThanDays day(s) (actual age: {0:N2} days). Forcing re-download..." -f $fileAgeDays
+                }
+            }
+        } catch {
+            Write-Warning "Failed to read existing file metadata. Proceeding with download."
+            $needsDownload = $true
+        }
+    }
+
+    if ($needsDownload) {
+        if (!$Quiet) {
+            Write-Host "Downloading $FriendlyName..."
+        }
+
+        $RetryCount = 3
+        for ($Retry = 0; $Retry -lt $RetryCount; $Retry++) {
+            try {
+                (New-Object System.Net.WebClient).DownloadFile($URL, $Output)
+                Write-Host "$FriendlyName downloaded successfully"
+                break
+            } catch {
+                Write-Warning "$FriendlyName download failed. Retrying ($($Retry + 1)/$RetryCount)..."
+                Start-Sleep -Seconds 5
+            }
+        }
+
+        if (!(Test-Path $Output)) {
+            Read-Host "Download of $FriendlyName failed after $RetryCount retries. Press ENTER to exit."
+            Exit 1
+        }
     } else {
-        if (!$Quiet) {Write-Host "$FriendlyName already downloaded. Skipping..."`n}
+        if (!$Quiet) {
+            Write-Host "$FriendlyName already downloaded and recent enough. Skipping..."
+        }
     }
-    New-Variable -Name $OutputName"Output" -Value $Output -Scope Global -Force
+
+    New-Variable -Name "${OutputName}Output" -Value $Output -Scope Global -Force
 }
 
 # Helper function to set clipboard with retry logic
@@ -81,7 +139,8 @@ function Set-ClipboardWithRetry {
 }
 
 # Download the word list
-Download -Name WordList -URL https://github.com/RaySmalley/Packages/raw/main/WordList.txt -Quiet -Force
+Download -Name WordList -URL https://github.com/415Group-Ray/Packages/raw/main/WordList.txt -Quiet -ForceIfOlderThanDays 7
+                             
 $WordList = Get-Content $WordListOutput
 
 # Get random word function
@@ -221,7 +280,7 @@ function pge {
 }
 
 # Monty Python Quote password
-Download -Name MontyPythonQuotes -URL https://github.com/RaySmalley/Packages/raw/main/MontyPythonQuotes.txt -Quiet -Force
+Download -Name MontyPythonQuotes -URL https://github.com/415Group-Ray/Packages/raw/main/MontyPythonQuotes.txt -Quiet -ForceIfOlderThanDays 7
 
 function pgmp {
     $Password = Get-Content $MontyPythonQuotesOutput | Get-Random

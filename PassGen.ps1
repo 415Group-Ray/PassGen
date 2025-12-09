@@ -1,7 +1,7 @@
 ### Password Generator ###
 ### Ray Smalley        ###
 ### Created 01.29.18   ###
-### Updated 12.08.25   ###
+### Updated 12.09.25   ###
 
 
 # Disable progress bar for faster downloads
@@ -263,91 +263,92 @@ function pge {
 
     $Symbols = @('@','!','#','$','%','^','&','*','-','_','=','+',';',':','<','>','.','?','/','~')
     $MaxAttempts = 50
+    $FixedOverhead = 2 # 1 Symbol + 1 Number
 
-    $WordBuckets = [System.Collections.Generic.Dictionary[int, System.Collections.Generic.List[string]]]::new()
+    # --- 1. Load and Bucket Words ---
+    # (Assuming $WordList is loaded externally. If not, load it here)
+    $WordBuckets = @{}
     foreach ($word in $WordList) {
-        $length = [int]$word.Length
-        if ($length -lt 4 -or $length -gt 18) { continue }
-        if (-not $WordBuckets.ContainsKey($length)) {
-            $WordBuckets[$length] = [System.Collections.Generic.List[string]]::new()
+        $len = $word.Length
+        if ($len -lt 4 -or $len -gt 12) { continue } # Keep words reasonable
+        
+        if (-not $WordBuckets.ContainsKey($len)) {
+            $WordBuckets[$len] = @()
         }
-        $WordBuckets[$length].Add($word)
+        $WordBuckets[$len] += $word
     }
+    
+    # Ensure keys are an array to avoid "Get-Random" scalar bugs
+    $AvailableLengths = @($WordBuckets.Keys)
 
-    $WordArrays = [System.Collections.Generic.Dictionary[int, string[]]]::new()
-    foreach ($lengthKey in $WordBuckets.Keys) {
-        $WordArrays[$lengthKey] = $WordBuckets[$lengthKey].ToArray()
-    }
+    # --- 2. Attempt Loop ---
+    for ($i = 0; $i -lt $MaxAttempts; $i++) {
+        
+        $FirstWordLen = $null
+        $SecondWordLen = $null
 
-    $MinWordLength = 4
-    $targetWordLength = $null
-    $LengthPairs = $null
-
-    if ($TotalLength) {
-        $targetWordLength = $TotalLength - 2
-        $LengthPairs = @(
-            foreach ($firstLength in $WordArrays.Keys) {
-            if ($firstLength -lt $MinWordLength -or $firstLength -gt ($targetWordLength - $MinWordLength)) { continue }
-            $secondLength = $targetWordLength - $firstLength
-            if ($WordArrays.ContainsKey($secondLength)) {
-                [PSCustomObject]@{
-                    FirstLength  = $firstLength
-                    SecondLength = $secondLength
-                }
-            }
-            }
-        )
-
-        if (-not $LengthPairs) {
-            Write-Warning "Unable to build a password matching the requested length with available words."
-            return
-        }
-    }
-
-    for ($attempt = 0; $attempt -lt $MaxAttempts; $attempt++) {
+        # --- PATH A: User requested a specific length ---
         if ($TotalLength) {
-            $lengthChoice = Get-Random -InputObject $LengthPairs
-            $FirstLength = $lengthChoice.FirstLength
-            $SecondLength = $lengthChoice.SecondLength
+            $TargetContentLen = $TotalLength - $FixedOverhead
+            
+            # Filter lengths that have a matching partner
+            $ValidFirstLengths = @($AvailableLengths | Where-Object { 
+                $WordBuckets.ContainsKey($TargetContentLen - $_) 
+            })
 
-            if (-not ($WordArrays.ContainsKey($FirstLength) -and $WordArrays.ContainsKey($SecondLength))) { continue }
+            if ($ValidFirstLengths.Count -eq 0) {
+                Write-Warning "No word combinations fit length $TotalLength."
+                return
+            }
 
-            $FirstWordRaw = Get-Random -InputObject $WordArrays[$FirstLength]
-            $SecondWordRaw = Get-Random -InputObject $WordArrays[$SecondLength]
-        } else {
-            $FirstWordRaw = GetRandomWord
-            $SecondWordRaw = GetRandomWord
+            # Pick valid lengths
+            $FirstWordLen = $ValidFirstLengths | Get-Random
+            $SecondWordLen = $TargetContentLen - $FirstWordLen
+        } 
+        # --- PATH B: No parameter (Standard Random) ---
+        else {
+            # Just pick two available lengths at random
+            $FirstWordLen = $AvailableLengths | Get-Random
+            $SecondWordLen = $AvailableLengths | Get-Random
         }
 
-        $FirstWord = (Get-Culture).TextInfo.ToTitleCase($FirstWordRaw)
-        $SecondWord = (Get-Culture).TextInfo.ToTitleCase($SecondWordRaw)
-        $Symbol = $Symbols | Get-Random
-        $Number = Get-Random -Minimum 1 -Maximum 10
-        $Jumble = @($Number, $Symbol) | Get-Random -Count 2
+        # --- 3. Word Selection ---
+        # We pipe to Get-Random to ensure we get exactly ONE string, not an array
+        $FirstWordRaw  = $WordBuckets[$FirstWordLen] | Get-Random
+        $SecondWordRaw = $WordBuckets[$SecondWordLen] | Get-Random
 
+        $FirstWord  = (Get-Culture).TextInfo.ToTitleCase($FirstWordRaw)
+        $SecondWord = (Get-Culture).TextInfo.ToTitleCase($SecondWordRaw)
+
+        # --- 4. The Jumble (Guarantees 1 Num, 1 Symbol) ---
+        $OneSymbol = $Symbols | Get-Random
+        $OneNumber = Get-Random -Minimum 1 -Maximum 10
+        
+        # Put them in a bag and shake them up
+        $Jumble = @($OneNumber, $OneSymbol) | Get-Random -Count 2
+
+        # --- 5. Assembly ---
         $Password = "$FirstWord$($Jumble[0])$SecondWord$($Jumble[1])"
 
-        if ($TotalLength -and $Password.Length -ne $TotalLength) {
-            continue
-        }
+        # Sanity check for Length (only if parameter was set)
+        if ($TotalLength -and $Password.Length -ne $TotalLength) { continue }
 
+        # --- 6. Output ---
         $Success = Set-ClipboardWithRetry -Content $Password
         if (-not $Success) {
-            Write-Host "Failed to set clipboard after multiple attempts. Please try again." -ForegroundColor Red
+            Write-Host "Clipboard failed." -ForegroundColor Red
         } else {
             CheckLogSize
             Add-Content -Value "$(Get-Date -Format 'MM/dd/yyyy - hh:mm:ss tt'): $Password" -Path $env:TEMP\PassGen.log
+            
             Write-Host "Password added to clipboard: " -ForegroundColor Cyan -NoNewline
             Write-Host $FirstWord -ForegroundColor Red -NoNewline
             Write-Host $Jumble[0] -NoNewline -ForegroundColor White
             Write-Host $SecondWord -ForegroundColor Yellow -NoNewline
             Write-Host $Jumble[1]`n -ForegroundColor Green
         }
-
         return
     }
-
-    Write-Warning "Unable to build a password matching the requested length after $MaxAttempts attempts."
 }
 
 # Monty Python Quote password

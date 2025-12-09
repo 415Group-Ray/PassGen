@@ -285,7 +285,8 @@ function pge {
 
     if ($TotalLength) {
         $targetWordLength = $TotalLength - 2
-        $LengthPairs = foreach ($firstLength in $WordArrays.Keys) {
+        $LengthPairs = @(
+            foreach ($firstLength in $WordArrays.Keys) {
             if ($firstLength -lt $MinWordLength -or $firstLength -gt ($targetWordLength - $MinWordLength)) { continue }
             $secondLength = $targetWordLength - $firstLength
             if ($WordArrays.ContainsKey($secondLength)) {
@@ -294,7 +295,8 @@ function pge {
                     SecondLength = $secondLength
                 }
             }
-        }
+            }
+        )
 
         if (-not $LengthPairs) {
             Write-Warning "Unable to build a password matching the requested length with available words."
@@ -304,7 +306,7 @@ function pge {
 
     for ($attempt = 0; $attempt -lt $MaxAttempts; $attempt++) {
         if ($TotalLength) {
-            $lengthChoice = Get-Random $LengthPairs
+            $lengthChoice = Get-Random -InputObject $LengthPairs
             $FirstLength = $lengthChoice.FirstLength
             $SecondLength = $lengthChoice.SecondLength
 

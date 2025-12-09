@@ -255,28 +255,53 @@ function pgw {
 
 # Easy Password
 function pge {
-    $FirstWord = (Get-Culture).TextInfo.ToTitleCase($(GetRandomWord))
-    $SecondWord = (Get-Culture).TextInfo.ToTitleCase($(GetRandomWord))
-    $Symbol = @('@','!','#','$','%','^','&','*','-','_','=','+',';',':','<','>','.','?','/','~') | Get-Random
-    $Number = Get-Random -Minimum 1 -Maximum 10
-    $Jumble = @($Number, $Symbol) | Get-Random -Count 2
-    $First = $FirstWord
-    $Second = $Jumble[0]
-    $Third = $SecondWord
-    $Fourth = $Jumble[1]
-    $Password = $First + $Second + $Third + $Fourth
-    $Success = Set-ClipboardWithRetry -Content $Password
-    if (-not $Success) {
-        Write-Host "Failed to set clipboard after multiple attempts. Please try again." -ForegroundColor Red
-    } else {
-        CheckLogSize
-        Add-Content -Value "$(Get-Date -Format 'MM/dd/yyyy - hh:mm:ss tt'): $FirstWord$Symbol$SecondWord$Number" -Path $env:TEMP\PassGen.log
-        Write-Host "Password added to clipboard: " -ForegroundColor Cyan -NoNewline
-        Write-Host $First -ForegroundColor Red -NoNewline
-        Write-Host $Second -NoNewline -ForegroundColor White
-        Write-Host $Third -ForegroundColor Yellow -NoNewline
-        Write-Host $Fourth`n -ForegroundColor Green
+    param(
+        [Parameter(Position = 0)]
+        [ValidateRange(12, 18)]
+        [Nullable[int]]$TotalLength
+    )
+
+    $Symbols = @('@','!','#','$','%','^','&','*','-','_','=','+',';',':','<','>','.','?','/','~')
+    $PaddingPool = $Symbols + (0..9)
+    $MaxAttempts = 25
+
+    for ($attempt = 0; $attempt -lt $MaxAttempts; $attempt++) {
+        $FirstWord = (Get-Culture).TextInfo.ToTitleCase($(GetRandomWord))
+        $SecondWord = (Get-Culture).TextInfo.ToTitleCase($(GetRandomWord))
+        $Symbol = $Symbols | Get-Random
+        $Number = Get-Random -Minimum 1 -Maximum 10
+        $Jumble = @($Number, $Symbol) | Get-Random -Count 2
+
+        $BasePassword = "$FirstWord$($Jumble[0])$SecondWord$($Jumble[1])"
+
+        if ($TotalLength -and $BasePassword.Length -gt $TotalLength) {
+            continue
+        }
+
+        $PaddingLength = if ($TotalLength) { $TotalLength - $BasePassword.Length } else { 0 }
+        if ($PaddingLength -lt 0) { continue }
+
+        $Padding = @()
+        for ($i = 0; $i -lt $PaddingLength; $i++) {
+            $Padding += $PaddingPool | Get-Random
+        }
+
+        $Password = "$BasePassword$(-join $Padding)"
+
+        $Success = Set-ClipboardWithRetry -Content $Password
+        if (-not $Success) {
+            Write-Host "Failed to set clipboard after multiple attempts. Please try again." -ForegroundColor Red
+        } else {
+            CheckLogSize
+            Add-Content -Value "$(Get-Date -Format 'MM/dd/yyyy - hh:mm:ss tt'): $Password" -Path $env:TEMP\PassGen.log
+            Write-Host "Password added to clipboard: " -ForegroundColor Cyan -NoNewline
+            Write-Host $Password`n -ForegroundColor Green
+        }
+
+        return
     }
+
+    Write-Warning "Unable to build a password matching the requested length after $MaxAttempts attempts."
 }
 
 # Monty Python Quote password

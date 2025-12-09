@@ -262,31 +262,57 @@ function pge {
     )
 
     $Symbols = @('@','!','#','$','%','^','&','*','-','_','=','+',';',':','<','>','.','?','/','~')
-    $PaddingPool = $Symbols + (0..9)
-    $MaxAttempts = 25
+    $MaxAttempts = 50
+
+    $WordBuckets = @{}
+    foreach ($word in $WordList) {
+        $length = $word.Length
+        if ($length -lt 4 -or $length -gt 18) { continue }
+        if (-not $WordBuckets.ContainsKey($length)) {
+            $WordBuckets[$length] = @()
+        }
+        $WordBuckets[$length] += $word
+    }
+
+    $MinWordLength = 4
+    $targetWordLength = $null
+    $FirstLengthOptions = $null
+
+    if ($TotalLength) {
+        $targetWordLength = $TotalLength - 2
+        $FirstLengthOptions = $WordBuckets.Keys | ForEach-Object {[int]$_} | Where-Object {
+            $_ -ge $MinWordLength -and $_ -le ($targetWordLength - $MinWordLength) -and $WordBuckets.ContainsKey($targetWordLength - $_)
+        }
+
+        if (-not $FirstLengthOptions) {
+            Write-Warning "Unable to build a password matching the requested length with available words."
+            return
+        }
+    }
 
     for ($attempt = 0; $attempt -lt $MaxAttempts; $attempt++) {
-        $FirstWord = (Get-Culture).TextInfo.ToTitleCase($(GetRandomWord))
-        $SecondWord = (Get-Culture).TextInfo.ToTitleCase($(GetRandomWord))
+        if ($TotalLength) {
+            $FirstLength = Get-Random $FirstLengthOptions
+            $SecondLength = $targetWordLength - $FirstLength
+
+            $FirstWordRaw = Get-Random $WordBuckets[$FirstLength]
+            $SecondWordRaw = Get-Random $WordBuckets[$SecondLength]
+        } else {
+            $FirstWordRaw = GetRandomWord
+            $SecondWordRaw = GetRandomWord
+        }
+
+        $FirstWord = (Get-Culture).TextInfo.ToTitleCase($FirstWordRaw)
+        $SecondWord = (Get-Culture).TextInfo.ToTitleCase($SecondWordRaw)
         $Symbol = $Symbols | Get-Random
         $Number = Get-Random -Minimum 1 -Maximum 10
         $Jumble = @($Number, $Symbol) | Get-Random -Count 2
 
-        $BasePassword = "$FirstWord$($Jumble[0])$SecondWord$($Jumble[1])"
+        $Password = "$FirstWord$($Jumble[0])$SecondWord$($Jumble[1])"
 
-        if ($TotalLength -and $BasePassword.Length -gt $TotalLength) {
+        if ($TotalLength -and $Password.Length -ne $TotalLength) {
             continue
         }
-
-        $PaddingLength = if ($TotalLength) { $TotalLength - $BasePassword.Length } else { 0 }
-        if ($PaddingLength -lt 0) { continue }
-
-        $Padding = @()
-        for ($i = 0; $i -lt $PaddingLength; $i++) {
-            $Padding += $PaddingPool | Get-Random
-        }
-
-        $Password = "$BasePassword$(-join $Padding)"
 
         $Success = Set-ClipboardWithRetry -Content $Password
         if (-not $Success) {
@@ -295,7 +321,10 @@ function pge {
             CheckLogSize
             Add-Content -Value "$(Get-Date -Format 'MM/dd/yyyy - hh:mm:ss tt'): $Password" -Path $env:TEMP\PassGen.log
             Write-Host "Password added to clipboard: " -ForegroundColor Cyan -NoNewline
-            Write-Host $Password`n -ForegroundColor Green
+            Write-Host $FirstWord -ForegroundColor Red -NoNewline
+            Write-Host $Jumble[0] -NoNewline -ForegroundColor White
+            Write-Host $SecondWord -ForegroundColor Yellow -NoNewline
+            Write-Host $Jumble[1]`n -ForegroundColor Green
         }
 
         return

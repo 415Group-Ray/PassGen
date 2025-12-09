@@ -264,27 +264,34 @@ function pge {
     $Symbols = @('@','!','#','$','%','^','&','*','-','_','=','+',';',':','<','>','.','?','/','~')
     $MaxAttempts = 50
 
-    $WordBuckets = @{}
+    $WordBuckets = [System.Collections.Generic.Dictionary[int, System.Collections.Generic.List[string]]]::new()
     foreach ($word in $WordList) {
-        $length = $word.Length
+        $length = [int]$word.Length
         if ($length -lt 4 -or $length -gt 18) { continue }
         if (-not $WordBuckets.ContainsKey($length)) {
-            $WordBuckets[$length] = @()
+            $WordBuckets[$length] = [System.Collections.Generic.List[string]]::new()
         }
-        $WordBuckets[$length] += $word
+        $WordBuckets[$length].Add($word)
     }
 
     $MinWordLength = 4
     $targetWordLength = $null
-    $FirstLengthOptions = $null
+    $LengthPairs = $null
 
     if ($TotalLength) {
         $targetWordLength = $TotalLength - 2
-        $FirstLengthOptions = $WordBuckets.Keys | ForEach-Object {[int]$_} | Where-Object {
-            $_ -ge $MinWordLength -and $_ -le ($targetWordLength - $MinWordLength) -and $WordBuckets.ContainsKey($targetWordLength - $_)
+        $LengthPairs = foreach ($firstLength in $WordBuckets.Keys) {
+            if ($firstLength -lt $MinWordLength -or $firstLength -gt ($targetWordLength - $MinWordLength)) { continue }
+            $secondLength = $targetWordLength - $firstLength
+            if ($WordBuckets.ContainsKey($secondLength)) {
+                [PSCustomObject]@{
+                    FirstLength  = $firstLength
+                    SecondLength = $secondLength
+                }
+            }
         }
 
-        if (-not $FirstLengthOptions) {
+        if (-not $LengthPairs) {
             Write-Warning "Unable to build a password matching the requested length with available words."
             return
         }
@@ -292,8 +299,11 @@ function pge {
 
     for ($attempt = 0; $attempt -lt $MaxAttempts; $attempt++) {
         if ($TotalLength) {
-            $FirstLength = Get-Random $FirstLengthOptions
-            $SecondLength = $targetWordLength - $FirstLength
+            $lengthChoice = Get-Random $LengthPairs
+            $FirstLength = $lengthChoice.FirstLength
+            $SecondLength = $lengthChoice.SecondLength
+
+            if (-not ($WordBuckets.ContainsKey($FirstLength) -and $WordBuckets.ContainsKey($SecondLength))) { continue }
 
             $FirstWordRaw = Get-Random $WordBuckets[$FirstLength]
             $SecondWordRaw = Get-Random $WordBuckets[$SecondLength]

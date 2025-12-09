@@ -274,16 +274,21 @@ function pge {
         $WordBuckets[$length].Add($word)
     }
 
+    $WordArrays = [System.Collections.Generic.Dictionary[int, string[]]]::new()
+    foreach ($lengthKey in $WordBuckets.Keys) {
+        $WordArrays[$lengthKey] = $WordBuckets[$lengthKey].ToArray()
+    }
+
     $MinWordLength = 4
     $targetWordLength = $null
     $LengthPairs = $null
 
     if ($TotalLength) {
         $targetWordLength = $TotalLength - 2
-        $LengthPairs = foreach ($firstLength in $WordBuckets.Keys) {
+        $LengthPairs = foreach ($firstLength in $WordArrays.Keys) {
             if ($firstLength -lt $MinWordLength -or $firstLength -gt ($targetWordLength - $MinWordLength)) { continue }
             $secondLength = $targetWordLength - $firstLength
-            if ($WordBuckets.ContainsKey($secondLength)) {
+            if ($WordArrays.ContainsKey($secondLength)) {
                 [PSCustomObject]@{
                     FirstLength  = $firstLength
                     SecondLength = $secondLength
@@ -303,10 +308,10 @@ function pge {
             $FirstLength = $lengthChoice.FirstLength
             $SecondLength = $lengthChoice.SecondLength
 
-            if (-not ($WordBuckets.ContainsKey($FirstLength) -and $WordBuckets.ContainsKey($SecondLength))) { continue }
+            if (-not ($WordArrays.ContainsKey($FirstLength) -and $WordArrays.ContainsKey($SecondLength))) { continue }
 
-            $FirstWordRaw = Get-Random $WordBuckets[$FirstLength]
-            $SecondWordRaw = Get-Random $WordBuckets[$SecondLength]
+            $FirstWordRaw = Get-Random -InputObject $WordArrays[$FirstLength]
+            $SecondWordRaw = Get-Random -InputObject $WordArrays[$SecondLength]
         } else {
             $FirstWordRaw = GetRandomWord
             $SecondWordRaw = GetRandomWord

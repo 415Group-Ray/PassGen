@@ -255,28 +255,92 @@ function pgw {
 
 # Easy Password
 function pge {
-    $FirstWord = (Get-Culture).TextInfo.ToTitleCase($(GetRandomWord))
-    $SecondWord = (Get-Culture).TextInfo.ToTitleCase($(GetRandomWord))
-    $Symbol = @('@','!','#','$','%','^','&','*','-','_','=','+',';',':','<','>','.','?','/','~') | Get-Random
-    $Number = Get-Random -Minimum 1 -Maximum 10
-    $Jumble = @($Number, $Symbol) | Get-Random -Count 2
-    $First = $FirstWord
-    $Second = $Jumble[0]
-    $Third = $SecondWord
-    $Fourth = $Jumble[1]
-    $Password = $First + $Second + $Third + $Fourth
-    $Success = Set-ClipboardWithRetry -Content $Password
-    if (-not $Success) {
-        Write-Host "Failed to set clipboard after multiple attempts. Please try again." -ForegroundColor Red
-    } else {
-        CheckLogSize
-        Add-Content -Value "$(Get-Date -Format 'MM/dd/yyyy - hh:mm:ss tt'): $FirstWord$Symbol$SecondWord$Number" -Path $env:TEMP\PassGen.log
-        Write-Host "Password added to clipboard: " -ForegroundColor Cyan -NoNewline
-        Write-Host $First -ForegroundColor Red -NoNewline
-        Write-Host $Second -NoNewline -ForegroundColor White
-        Write-Host $Third -ForegroundColor Yellow -NoNewline
-        Write-Host $Fourth`n -ForegroundColor Green
+    param(
+        [Parameter(Position = 0)]
+        [ValidateRange(12, 18)]
+        [Nullable[int]]$TotalLength
+    )
+
+    $Symbols = @('@','!','#','$','%','^','&','*','-','_','=','+',';',':','<','>','.','?','/','~')
+    $MaxAttempts = 50
+
+    $WordBuckets = [System.Collections.Generic.Dictionary[int, System.Collections.Generic.List[string]]]::new()
+    foreach ($word in $WordList) {
+        $length = [int]$word.Length
+        if ($length -lt 4 -or $length -gt 18) { continue }
+        if (-not $WordBuckets.ContainsKey($length)) {
+            $WordBuckets[$length] = [System.Collections.Generic.List[string]]::new()
+        }
+        $WordBuckets[$length].Add($word)
     }
+
+    $MinWordLength = 4
+    $targetWordLength = $null
+    $LengthPairs = $null
+
+    if ($TotalLength) {
+        $targetWordLength = $TotalLength - 2
+        $LengthPairs = foreach ($firstLength in $WordBuckets.Keys) {
+            if ($firstLength -lt $MinWordLength -or $firstLength -gt ($targetWordLength - $MinWordLength)) { continue }
+            $secondLength = $targetWordLength - $firstLength
+            if ($WordBuckets.ContainsKey($secondLength)) {
+                [PSCustomObject]@{
+                    FirstLength  = $firstLength
+                    SecondLength = $secondLength
+                }
+            }
+        }
+
+        if (-not $LengthPairs) {
+            Write-Warning "Unable to build a password matching the requested length with available words."
+            return
+        }
+    }
+
+    for ($attempt = 0; $attempt -lt $MaxAttempts; $attempt++) {
+        if ($TotalLength) {
+            $lengthChoice = Get-Random $LengthPairs
+            $FirstLength = $lengthChoice.FirstLength
+            $SecondLength = $lengthChoice.SecondLength
+
+            if (-not ($WordBuckets.ContainsKey($FirstLength) -and $WordBuckets.ContainsKey($SecondLength))) { continue }
+
+            $FirstWordRaw = Get-Random $WordBuckets[$FirstLength]
+            $SecondWordRaw = Get-Random $WordBuckets[$SecondLength]
+        } else {
+            $FirstWordRaw = GetRandomWord
+            $SecondWordRaw = GetRandomWord
+        }
+
+        $FirstWord = (Get-Culture).TextInfo.ToTitleCase($FirstWordRaw)
+        $SecondWord = (Get-Culture).TextInfo.ToTitleCase($SecondWordRaw)
+        $Symbol = $Symbols | Get-Random
+        $Number = Get-Random -Minimum 1 -Maximum 10
+        $Jumble = @($Number, $Symbol) | Get-Random -Count 2
+
+        $Password = "$FirstWord$($Jumble[0])$SecondWord$($Jumble[1])"
+
+        if ($TotalLength -and $Password.Length -ne $TotalLength) {
+            continue
+        }
+
+        $Success = Set-ClipboardWithRetry -Content $Password
+        if (-not $Success) {
+            Write-Host "Failed to set clipboard after multiple attempts. Please try again." -ForegroundColor Red
+        } else {
+            CheckLogSize
+            Add-Content -Value "$(Get-Date -Format 'MM/dd/yyyy - hh:mm:ss tt'): $Password" -Path $env:TEMP\PassGen.log
+            Write-Host "Password added to clipboard: " -ForegroundColor Cyan -NoNewline
+            Write-Host $FirstWord -ForegroundColor Red -NoNewline
+            Write-Host $Jumble[0] -NoNewline -ForegroundColor White
+            Write-Host $SecondWord -ForegroundColor Yellow -NoNewline
+            Write-Host $Jumble[1]`n -ForegroundColor Green
+        }
+
+        return
+    }
+
+    Write-Warning "Unable to build a password matching the requested length after $MaxAttempts attempts."
 }
 
 # Monty Python Quote password

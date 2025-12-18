@@ -1,7 +1,7 @@
 ### Password Generator ###
 ### Ray Smalley        ###
 ### Created 01.29.18   ###
-### Updated 12.08.25   ###
+### Updated 12.18.25   ###
 
 
 # Disable progress bar for faster downloads
@@ -255,27 +255,104 @@ function pgw {
 
 # Easy Password
 function pge {
-    $FirstWord = (Get-Culture).TextInfo.ToTitleCase($(GetRandomWord))
-    $SecondWord = (Get-Culture).TextInfo.ToTitleCase($(GetRandomWord))
-    $Symbol = @('@','!','#','$','%','^','&','*','-','_','=','+',';',':','<','>','.','?','/','~') | Get-Random
-    $Number = Get-Random -Minimum 1 -Maximum 10
-    $Jumble = @($Number, $Symbol) | Get-Random -Count 2
-    $First = $FirstWord
-    $Second = $Jumble[0]
-    $Third = $SecondWord
-    $Fourth = $Jumble[1]
-    $Password = $First + $Second + $Third + $Fourth
-    $Success = Set-ClipboardWithRetry -Content $Password
-    if (-not $Success) {
-        Write-Host "Failed to set clipboard after multiple attempts. Please try again." -ForegroundColor Red
-    } else {
-        CheckLogSize
-        Add-Content -Value "$(Get-Date -Format 'MM/dd/yyyy - hh:mm:ss tt'): $FirstWord$Symbol$SecondWord$Number" -Path $env:TEMP\PassGen.log
-        Write-Host "Password added to clipboard: " -ForegroundColor Cyan -NoNewline
-        Write-Host $First -ForegroundColor Red -NoNewline
-        Write-Host $Second -NoNewline -ForegroundColor White
-        Write-Host $Third -ForegroundColor Yellow -NoNewline
-        Write-Host $Fourth`n -ForegroundColor Green
+    param(
+        [Parameter(Position = 0)]
+        [ValidateRange(12, 18)]
+        [Nullable[int]]$TotalLength,
+        [switch]$PassThru
+    )
+
+    $Symbols = @('@','!','#','$','%','^','&','*','-','_','=','+',';',':','<','>','.','?','/','~')
+    $MaxAttempts = 50
+    $FixedOverhead = 2 # 1 Symbol + 1 Number
+
+    # --- 1. Load and Bucket Words ---
+    # (Assuming $WordList is loaded externally. If not, load it here)
+    $WordBuckets = @{}
+    foreach ($word in $WordList) {
+        $len = $word.Length
+        if ($len -lt 4 -or $len -gt 12) { continue } # Keep words reasonable
+        
+        if (-not $WordBuckets.ContainsKey($len)) {
+            $WordBuckets[$len] = @()
+        }
+        $WordBuckets[$len] += $word
+    }
+    
+    # Ensure keys are an array to avoid "Get-Random" scalar bugs
+    $AvailableLengths = @($WordBuckets.Keys)
+
+    # --- 2. Attempt Loop ---
+    for ($i = 0; $i -lt $MaxAttempts; $i++) {
+        
+        $FirstWordLen = $null
+        $SecondWordLen = $null
+
+        # --- PATH A: User requested a specific length ---
+        if ($TotalLength) {
+            $TargetContentLen = $TotalLength - $FixedOverhead
+            
+            # Filter lengths that have a matching partner
+            $ValidFirstLengths = @($AvailableLengths | Where-Object { 
+                $WordBuckets.ContainsKey($TargetContentLen - $_) 
+            })
+
+            if ($ValidFirstLengths.Count -eq 0) {
+                Write-Warning "No word combinations fit length $TotalLength."
+                return
+            }
+
+            # Pick valid lengths
+            $FirstWordLen = $ValidFirstLengths | Get-Random
+            $SecondWordLen = $TargetContentLen - $FirstWordLen
+        } 
+        # --- PATH B: No parameter (Standard Random) ---
+        else {
+            # Just pick two available lengths at random
+            $FirstWordLen = $AvailableLengths | Get-Random
+            $SecondWordLen = $AvailableLengths | Get-Random
+        }
+
+        # --- 3. Word Selection ---
+        # We pipe to Get-Random to ensure we get exactly ONE string, not an array
+        $FirstWordRaw  = $WordBuckets[$FirstWordLen] | Get-Random
+        $SecondWordRaw = $WordBuckets[$SecondWordLen] | Get-Random
+
+        $FirstWord  = (Get-Culture).TextInfo.ToTitleCase($FirstWordRaw)
+        $SecondWord = (Get-Culture).TextInfo.ToTitleCase($SecondWordRaw)
+
+        # --- 4. The Jumble (Guarantees 1 Num, 1 Symbol) ---
+        $OneSymbol = $Symbols | Get-Random
+        $OneNumber = Get-Random -Minimum 1 -Maximum 10
+        
+        # Put them in a bag and shake them up
+        $Jumble = @($OneNumber, $OneSymbol) | Get-Random -Count 2
+
+        # --- 5. Assembly ---
+        $Password = "$FirstWord$($Jumble[0])$SecondWord$($Jumble[1])"
+
+        # Sanity check for Length (only if parameter was set)
+        if ($TotalLength -and $Password.Length -ne $TotalLength) { continue }
+
+        # --- 6. Output ---
+        if ($PassThru) {
+            $Password
+        } else {
+            $Success = Set-ClipboardWithRetry -Content $Password
+            if (-not $Success) {
+                Write-Host "Clipboard failed." -ForegroundColor Red
+            } else {
+                CheckLogSize
+                Add-Content -Value "$(Get-Date -Format 'MM/dd/yyyy - hh:mm:ss tt'): $Password" -Path $env:TEMP\PassGen.log
+            
+                Write-Host "Password added to clipboard: " -ForegroundColor Cyan -NoNewline
+                Write-Host $FirstWord -ForegroundColor Red -NoNewline
+                Write-Host $Jumble[0] -NoNewline -ForegroundColor White
+                Write-Host $SecondWord -ForegroundColor Yellow -NoNewline
+                Write-Host $Jumble[1] -ForegroundColor Green
+            }
+        }
+        return
     }
 }
 

@@ -1,7 +1,7 @@
 ### Password Generator ###
 ### Ray Smalley        ###
 ### Created 01.29.18   ###
-### Updated 12.09.25   ###
+### Updated 12.18.25   ###
 
 
 # Disable progress bar for faster downloads
@@ -258,7 +258,8 @@ function pge {
     param(
         [Parameter(Position = 0)]
         [ValidateRange(12, 18)]
-        [Nullable[int]]$TotalLength
+        [Nullable[int]]$TotalLength,
+        [switch]$PassThru
     )
 
     $Symbols = @('@','!','#','$','%','^','&','*','-','_','=','+',';',':','<','>','.','?','/','~')
@@ -334,18 +335,22 @@ function pge {
         if ($TotalLength -and $Password.Length -ne $TotalLength) { continue }
 
         # --- 6. Output ---
-        $Success = Set-ClipboardWithRetry -Content $Password
-        if (-not $Success) {
-            Write-Host "Clipboard failed." -ForegroundColor Red
+        if ($PassThru) {
+            $Password
         } else {
-            CheckLogSize
-            Add-Content -Value "$(Get-Date -Format 'MM/dd/yyyy - hh:mm:ss tt'): $Password" -Path $env:TEMP\PassGen.log
+            $Success = Set-ClipboardWithRetry -Content $Password
+            if (-not $Success) {
+                Write-Host "Clipboard failed." -ForegroundColor Red
+            } else {
+                CheckLogSize
+                Add-Content -Value "$(Get-Date -Format 'MM/dd/yyyy - hh:mm:ss tt'): $Password" -Path $env:TEMP\PassGen.log
             
-            Write-Host "Password added to clipboard: " -ForegroundColor Cyan -NoNewline
-            Write-Host $FirstWord -ForegroundColor Red -NoNewline
-            Write-Host $Jumble[0] -NoNewline -ForegroundColor White
-            Write-Host $SecondWord -ForegroundColor Yellow -NoNewline
-            Write-Host $Jumble[1]`n -ForegroundColor Green
+                Write-Host "Password added to clipboard: " -ForegroundColor Cyan -NoNewline
+                Write-Host $FirstWord -ForegroundColor Red -NoNewline
+                Write-Host $Jumble[0] -NoNewline -ForegroundColor White
+                Write-Host $SecondWord -ForegroundColor Yellow -NoNewline
+                Write-Host $Jumble[1] -ForegroundColor Green
+            }
         }
         return
     }

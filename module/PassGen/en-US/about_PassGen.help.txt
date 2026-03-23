@@ -1,0 +1,29 @@
+TOPIC
+    about_PassGen
+
+SHORT DESCRIPTION
+    Describes the PassGen PowerShell module.
+
+LONG DESCRIPTION
+    PassGen is a module for generating random passwords, passphrases,
+    memorable passwords, and quote-based passwords. It exports modern,
+    approved-verb command names while preserving short aliases for
+    backwards compatibility with the original script.
+
+COMMANDS
+    New-RandomPassword
+    New-PassphrasePassword
+    New-MemorablePassword
+    Get-MontyPythonPassword
+
+MIGRATION
+    Import the module with:
+
+        Import-Module .\module\PassGen\PassGen.psd1 -Force
+
+    Old short command names are still available as aliases:
+
+        pg
+        pgw
+        pge
+        pgmp

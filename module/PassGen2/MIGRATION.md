@@ -5,7 +5,7 @@
 The repository now contains two parallel implementations:
 
 - the original script: `PassGen.ps1`
-- the new module: `module\PassGen\PassGen.psd1`
+- the new module: `module\PassGen2\PassGen2.psd1`
 
 The original script remains intact. The new module is the path intended for public distribution and future gallery publishing.
 
@@ -22,7 +22,7 @@ pgmp
 ## New usage
 
 ```powershell
-Import-Module .\module\PassGen\PassGen.psd1 -Force
+Import-Module .\module\PassGen2\PassGen2.psd1 -Force
 New-RandomPassword
 New-PassphrasePassword
 New-MemorablePassword

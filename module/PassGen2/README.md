@@ -1,6 +1,6 @@
-# PassGen Module
+# PassGen2 Module
 
-`PassGen` is a module-based rewrite of the original `PassGen.ps1` script. It preserves the existing password-generation ideas while packaging them in a form that is versioned, importable, testable, and ready for public distribution through GitHub and the PowerShell Gallery.
+`PassGen2` is a module-based rewrite of the original `PassGen.ps1` script. It preserves the existing password-generation ideas while packaging them in a form that is versioned, importable, testable, and ready for public distribution through GitHub and the PowerShell Gallery.
 
 ## Why a module
 
@@ -31,17 +31,17 @@ The original script remains untouched. This module lives in a separate path so b
 Import directly from the module manifest:
 
 ```powershell
-$manifest = Join-Path $PWD 'module\PassGen\PassGen.psd1'
+$manifest = Join-Path $PWD 'module\PassGen2\PassGen2.psd1'
 Import-Module $manifest -Force
-Get-Command -Module PassGen
+Get-Command -Module PassGen2
 ```
 
 For a user-scoped local install:
 
 ```powershell
-$target = Join-Path $HOME 'Documents\PowerShell\Modules\PassGen'
-Copy-Item -Path .\module\PassGen -Destination $target -Recurse -Force
-Import-Module PassGen -Force
+$target = Join-Path $HOME 'Documents\PowerShell\Modules\PassGen2'
+Copy-Item -Path .\module\PassGen2 -Destination $target -Recurse -Force
+Import-Module PassGen2 -Force
 ```
 
 ### Future PowerShell Gallery install
@@ -49,13 +49,13 @@ Import-Module PassGen -Force
 When the module is published, the intended install paths are:
 
 ```powershell
-Install-Module PassGen -Scope CurrentUser
+Install-Module PassGen2 -Scope CurrentUser
 ```
 
 or:
 
 ```powershell
-Install-PSResource PassGen -Scope CurrentUser
+Install-PSResource PassGen2 -Scope CurrentUser
 ```
 
 ## Usage examples
@@ -87,7 +87,7 @@ pgmp
 New usage:
 
 ```powershell
-Import-Module .\module\PassGen\PassGen.psd1 -Force
+Import-Module .\module\PassGen2\PassGen2.psd1 -Force
 New-RandomPassword
 New-PassphrasePassword
 New-MemorablePassword

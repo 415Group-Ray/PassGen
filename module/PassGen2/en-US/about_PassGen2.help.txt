@@ -1,11 +1,11 @@
 TOPIC
-    about_PassGen
+    about_PassGen2
 
 SHORT DESCRIPTION
-    Describes the PassGen PowerShell module.
+    Describes the PassGen2 PowerShell module.
 
 LONG DESCRIPTION
-    PassGen is a module for generating random passwords, passphrases,
+    PassGen2 is a module for generating random passwords, passphrases,
     memorable passwords, and quote-based passwords. It exports modern,
     approved-verb command names while preserving short aliases for
     backwards compatibility with the original script.
@@ -19,7 +19,7 @@ COMMANDS
 MIGRATION
     Import the module with:
 
-        Import-Module .\module\PassGen\PassGen.psd1 -Force
+        Import-Module .\module\PassGen2\PassGen2.psd1 -Force
 
     Old short command names are still available as aliases:
 

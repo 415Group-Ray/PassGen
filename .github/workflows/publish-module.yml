@@ -15,7 +15,6 @@ jobs:
       - name: Test
         shell: pwsh
         run: |
-          Install-Module Pester -Force -Scope CurrentUser
           Invoke-Pester
 
       - name: Publish
@@ -29,8 +28,12 @@ jobs:
           $moduleVersion = [string]$moduleMetadata.ModuleVersion
           $tagVersion = $env:GITHUB_REF_NAME -replace '^v', ''
 
+          Write-Host "Module Name: $moduleName"
+          Write-Host "Module Version: $moduleVersion"
+          Write-Host "Tag Version: $tagVersion"
+
           if ($tagVersion -and $tagVersion -ne $moduleVersion) {
-            throw "Release tag version '$tagVersion' does not match manifest version '$moduleVersion' in '$moduleManifestPath'."
+            throw "Version mismatch: tag '$tagVersion' does not match module version '$moduleVersion'. Please update the module manifest or use the correct tag."
           }
 
           $publishedModule = Find-Module -Name $moduleName -RequiredVersion $moduleVersion -Repository PSGallery -ErrorAction SilentlyContinue
@@ -40,4 +43,18 @@ jobs:
             exit 0
           }
 
-          Publish-Module -Path .\module\PassGen2 -NuGetApiKey $env:PSGALLERY_API_KEY -Repository PSGallery
+          $retryCount = 0
+          $maxRetries = 3
+          do {
+              try {
+                  Publish-Module -Path .\module\PassGen2 -NuGetApiKey $env:PSGALLERY_API_KEY -Repository PSGallery
+                  $success = $true
+              } catch {
+                  $retryCount++
+                  Start-Sleep -Seconds 5
+              }
+          } until ($success -or $retryCount -ge $maxRetries)
+          
+          if (-not $success) {
+              throw "Failed to publish module after $maxRetries attempts."
+          }

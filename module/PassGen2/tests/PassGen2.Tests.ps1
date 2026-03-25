@@ -1,6 +1,21 @@
 Describe 'PassGen2 module' {
     BeforeAll {
-        $moduleManifest = Join-Path -Path $PSScriptRoot -ChildPath '..\PassGen2.psd1'
+        $testRoot = if ($PSScriptRoot) {
+            $PSScriptRoot
+        } elseif ($PSCommandPath) {
+            Split-Path -Parent $PSCommandPath
+        } else {
+            Split-Path -Parent (Convert-Path -LiteralPath '.')
+        }
+
+        $moduleManifest = [System.IO.Path]::GetFullPath(
+            (Join-Path -Path $testRoot -ChildPath '..\PassGen2.psd1')
+        )
+
+        if (-not (Test-Path -LiteralPath $moduleManifest -PathType Leaf)) {
+            throw "PassGen2 test setup failed: module manifest was not found at '$moduleManifest'."
+        }
+
         Import-Module $moduleManifest -Force
     }
 

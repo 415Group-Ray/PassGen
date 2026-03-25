@@ -23,4 +23,21 @@ jobs:
         env:
           PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
         run: |
+          $moduleManifestPath = '.\module\PassGen2\PassGen2.psd1'
+          $moduleMetadata = Import-PowerShellDataFile -Path $moduleManifestPath
+          $moduleName = Split-Path -Path $moduleManifestPath -LeafBase
+          $moduleVersion = [string]$moduleMetadata.ModuleVersion
+          $tagVersion = $env:GITHUB_REF_NAME -replace '^v', ''
+
+          if ($tagVersion -and $tagVersion -ne $moduleVersion) {
+            throw "Release tag version '$tagVersion' does not match manifest version '$moduleVersion' in '$moduleManifestPath'."
+          }
+
+          $publishedModule = Find-Module -Name $moduleName -RequiredVersion $moduleVersion -Repository PSGallery -ErrorAction SilentlyContinue
+
+          if ($publishedModule) {
+            Write-Host "Skipping publish: $moduleName version $moduleVersion is already available on PSGallery."
+            exit 0
+          }
+
           Publish-Module -Path .\module\PassGen2 -NuGetApiKey $env:PSGALLERY_API_KEY -Repository PSGallery

@@ -1,6 +1,6 @@
 @{
     RootModule           = 'PassGen2.psm1'
-    ModuleVersion        = '1.0.0'
+    ModuleVersion        = '1.0.1'
     GUID                 = 'fe6c764e-8bfc-4f0c-8834-16fec4f95e2a'
     Author               = 'Ray Smalley'
     CompanyName          = '415Group-Ray'

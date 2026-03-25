@@ -1,0 +1,26 @@
+name: Publish PowerShell Module
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Test
+        shell: pwsh
+        run: |
+          Install-Module Pester -Force -Scope CurrentUser
+          Invoke-Pester
+
+      - name: Publish
+        shell: pwsh
+        env:
+          PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
+        run: |
+          Publish-Module -Path .\module\PassGen2 -NuGetApiKey $env:PSGALLERY_API_KEY -Repository PSGallery

@@ -1,71 +1,79 @@
 # PassGen
 
-PassGen is a PowerShell script that quickly generates strong passwords and copies them to your clipboard. It includes multiple generation modes, automatic wordlist downloads, and lightweight logging so you can review what was created.
+`PassGen` is the source repository for the published PowerShell module `PassGen2`, which generates random passwords, multi-word passphrases, memorable mixed passwords, and Monty Python quote passwords.
+
+## Current module
+
+The supported module name is `PassGen2`. It is published to the PowerShell Gallery and can be installed or imported directly by that name.
 
 ## Features
-- **Random string passwords (`pg`)** with configurable length, character sets (upper, lower, numbers, symbols), and exclusions.
-- **Three-word passphrases (`pgw`)** pulled from an automatically downloaded word list.
-- **Easy-to-remember combos (`pge`)** that blend words with random numbers and symbols.
-- **Monty Python quote passwords (`pgmp`)** sourced from a bundled quote list.
-- Clipboard copy with retries and a rotating log at `%TEMP%\PassGen.log`.
+
+- Random passwords with configurable length, character sets, and excluded characters
+- Multi-word passphrases with configurable word count and separator
+- Memorable passwords built from words, numbers, and symbols
+- Monty Python quote passwords
+- Compatibility aliases for the original short commands: `pg`, `pgw`, `pge`, and `pgmp`
+- Clipboard copy by default, optional pipeline output with `-PassThru`, and rotating log output under `%TEMP%\PassGen\PassGen.log`
+- Cached support files that refresh automatically, with bundled fallback data when the remote files are unavailable
 
 ## Requirements
-- PowerShell 5.1 or later (tested on Windows; works in any PowerShell host with clipboard access).
-- Internet access for the initial download of `WordList.txt` and `MontyPythonQuotes.txt` from the project package feed.
+
+- PowerShell 5.1 or later
+- Clipboard access if you want automatic copy-to-clipboard behavior
+- Internet access is optional: the module can refresh cached support files from GitHub, but bundled data is included as a fallback
 
 ## Installation
-1. Clone the repository:
-   ```powershell
-   git clone https://github.com/<your-org>/PassGen.git
-   cd PassGen
-   ```
-2. Run the script or dot-source it so the functions are available in your session:
-   ```powershell
-   # Run directly
-   powershell -ExecutionPolicy Bypass -File .\PassGen.ps1
 
-   # Or dot-source to load functions
-   . .\PassGen.ps1
-   ```
+Install from the PowerShell Gallery:
 
-> The script sets TLS 1.2 for downloads and writes a rotating log to `%TEMP%\PassGen.log`. If the log exceeds 1 MB it is truncated automatically.
+```powershell
+Install-Module PassGen2 -Scope CurrentUser
+Import-Module PassGen2
+```
+
+Or with PSResourceGet:
+
+```powershell
+Install-PSResource PassGen2 -Scope CurrentUser
+Import-Module PassGen2
+```
+
+For local development from this repository:
+
+```powershell
+$manifest = Join-Path $PWD 'module\PassGen2\PassGen2.psd1'
+Import-Module $manifest -Force
+```
 
 ## Usage
-After dot-sourcing, call any of the generation functions:
 
-- **Random string**
-  ```powershell
-  pg                 # 12 characters using all character sets
-  pg 16 UN           # 16 characters using only upper case and numbers
-  pg -Size 20 -Exclude '@','O','0'  # remove ambiguous characters
-  ```
-  Character sets:
-  - `U`: Uppercase letters (A–Z, excluding ambiguous characters)
-  - `L`: Lowercase letters
-  - `N`: Numbers (2–9)
-  - `S`: Symbols
+Use either the full command names or the legacy aliases after importing `PassGen2`.
 
-- **Three-word passphrase**
-  ```powershell
-  pgw
-  ```
-  Generates a `Word-Word-Word` phrase using 4–8 letter words.
+```powershell
+New-RandomPassword
+New-RandomPassword -Length 20 -CharacterSet LUNS -ExcludeCharacter '@','O','0'
 
-- **Easy-to-remember combo**
-  ```powershell
-  pge
-  ```
-  Combines two words with a random symbol and number in a varied order.
+New-PassphrasePassword
+New-PassphrasePassword -WordCount 4 -Separator '_'
 
-- **Monty Python quote**
-  ```powershell
-  pgmp
-  ```
-  Picks a random quote from the downloaded list.
+New-MemorablePassword
+New-MemorablePassword -TotalLength 16
 
-Each command copies the password to your clipboard. If the clipboard cannot be set after several retries, the script reports the failure.
+Get-MontyPythonPassword
+```
+
+Alias examples:
+
+```powershell
+pg
+pgw
+pge
+pgmp
+```
 
 ## Notes
-- The script downloads support files into your `%TEMP%` directory and refreshes them every 7 days by default.
-- To regenerate word lists immediately, rerun the script with `-Force` in the `Download` calls or delete the cached files in `%TEMP%`.
 
+- Commands copy the generated value to the clipboard unless you use `-SkipClipboard`
+- Commands return colorized console output by default; use `-PassThru` when you also want the generated value returned to the pipeline
+- Cached files are stored under the PassGen temp directory and refreshed every 7 days by default
+- The original script-based implementation is still in this repository for reference, but `PassGen2` is the supported install/import experience

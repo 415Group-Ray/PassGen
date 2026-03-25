@@ -1,19 +1,36 @@
 Describe 'PassGen2 module' {
     BeforeAll {
-        $testRoot = if ($PSScriptRoot) {
-            $PSScriptRoot
-        } elseif ($PSCommandPath) {
-            Split-Path -Parent $PSCommandPath
-        } else {
-            Split-Path -Parent (Convert-Path -LiteralPath '.')
+        $candidateRoots = [System.Collections.Generic.List[string]]::new()
+
+        foreach ($candidateRoot in @(
+            $PSScriptRoot,
+            $(if ($PSCommandPath) { Split-Path -Parent $PSCommandPath }),
+            (Get-Location).Path,
+            (Join-Path -Path (Get-Location).Path -ChildPath 'tests')
+        )) {
+            if ([string]::IsNullOrWhiteSpace($candidateRoot)) {
+                continue
+            }
+
+            $resolvedCandidateRoot = [System.IO.Path]::GetFullPath($candidateRoot)
+
+            if (-not $candidateRoots.Contains($resolvedCandidateRoot)) {
+                $candidateRoots.Add($resolvedCandidateRoot)
+            }
         }
 
-        $moduleManifest = [System.IO.Path]::GetFullPath(
-            (Join-Path -Path $testRoot -ChildPath '..\PassGen2.psd1')
-        )
+        $candidateManifestPaths = foreach ($candidateRoot in $candidateRoots) {
+            [System.IO.Path]::GetFullPath((Join-Path -Path $candidateRoot -ChildPath 'PassGen2.psd1'))
+            [System.IO.Path]::GetFullPath((Join-Path -Path $candidateRoot -ChildPath '..\PassGen2.psd1'))
+        }
 
-        if (-not (Test-Path -LiteralPath $moduleManifest -PathType Leaf)) {
-            throw "PassGen2 test setup failed: module manifest was not found at '$moduleManifest'."
+        $moduleManifest = $candidateManifestPaths |
+            Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |
+            Select-Object -First 1
+
+        if ([string]::IsNullOrWhiteSpace($moduleManifest)) {
+            $searchedPaths = $candidateManifestPaths -join "', '"
+            throw "PassGen2 test setup failed: module manifest was not found. Searched: '$searchedPaths'."
         }
 
         Import-Module $moduleManifest -Force

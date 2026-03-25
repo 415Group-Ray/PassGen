@@ -1,7 +1,6 @@
-$moduleManifest = Join-Path -Path $PSScriptRoot -ChildPath '..\PassGen2.psd1'
-
 Describe 'PassGen2 module' {
     BeforeAll {
+        $moduleManifest = Join-Path -Path $PSScriptRoot -ChildPath '..\PassGen2.psd1'
         Import-Module $moduleManifest -Force
     }
 

@@ -35,4 +35,54 @@ Describe 'PassGen2 module' {
         $password = New-RandomPassword -Length 12 -SkipClipboard
         $password | Should -BeNullOrEmpty
     }
+
+    It 'falls back to the bundled word list when the remote source is unavailable' {
+        InModuleScope PassGen2 {
+            $script:PassGenWordList = $null
+
+            Mock Save-PassGenRemoteFile {
+                throw 'download failed'
+            }
+
+            $wordList = Get-PassGenWordList
+
+            $wordList | Should -Contain 'anchor'
+            Should -Invoke Save-PassGenRemoteFile -Times 1
+        }
+    }
+
+    It 'falls back to the bundled quote list when the remote source is unavailable' {
+        InModuleScope PassGen2 {
+            $script:PassGenQuoteList = $null
+
+            Mock Save-PassGenRemoteFile {
+                throw 'download failed'
+            }
+
+            $quoteList = Get-PassGenQuoteList
+
+            $quoteList | Should -Contain 'Nobody expects the Spanish Inquisition!'
+            Should -Invoke Save-PassGenRemoteFile -Times 1
+        }
+    }
+
+    It 'skips invalid TEMP paths and uses the next writable location' {
+        InModuleScope PassGen2 {
+            $originalTemp = $env:TEMP
+            $originalTmp = $env:TMP
+
+            try {
+                $env:TEMP = 'Z:\does-not-exist'
+                $env:TMP = 'Z:\also-missing'
+
+                $cachePath = Get-PassGenPath -Kind Cache
+
+                $cachePath | Should -Not -Match '^Z:'
+                (Test-Path -LiteralPath $cachePath) | Should -BeTrue
+            } finally {
+                $env:TEMP = $originalTemp
+                $env:TMP = $originalTmp
+            }
+        }
+    }
 }

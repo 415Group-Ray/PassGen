@@ -17,16 +17,28 @@ function Get-PassGenPath {
         -not [string]::IsNullOrWhiteSpace($_)
     }
 
-    $tempRoot = $tempCandidates | Select-Object -First 1
+    $basePath = $null
+    foreach ($tempRoot in $tempCandidates) {
+        try {
+            $candidatePath = Join-Path -Path $tempRoot -ChildPath 'PassGen' -ErrorAction Stop
 
-    if (-not $tempRoot) {
-        throw 'Unable to locate a writable temporary directory for PassGen.'
+            if (-not (Test-Path -LiteralPath $candidatePath -ErrorAction Stop)) {
+                $null = New-Item -ItemType Directory -Path $candidatePath -Force -ErrorAction Stop
+            }
+
+            $probeFile = Join-Path -Path $candidatePath -ChildPath ([System.IO.Path]::GetRandomFileName()) -ErrorAction Stop
+            $null = New-Item -ItemType File -Path $probeFile -Force -ErrorAction Stop
+            Remove-Item -LiteralPath $probeFile -Force -ErrorAction Stop
+
+            $basePath = $candidatePath
+            break
+        } catch {
+            continue
+        }
     }
 
-    $basePath = Join-Path -Path $tempRoot -ChildPath 'PassGen'
-
-    if (-not (Test-Path -LiteralPath $basePath)) {
-        $null = New-Item -ItemType Directory -Path $basePath -Force
+    if (-not $basePath) {
+        throw 'Unable to locate a writable temporary directory for PassGen.'
     }
 
     switch ($Kind) {

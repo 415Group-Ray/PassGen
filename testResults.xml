@@ -1,0 +1,65 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<test-results xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="nunit_schema_2.5.xsd" name="Pester" total="8" errors="0" failures="8" not-run="0" inconclusive="0" ignored="0" skipped="0" invalid="0" date="2026-03-25" time="09:20:05">
+  <environment user-domain="AzureAD" cwd="C:\Users\rsmalley\OneDrive - 415 Group, Inc\Documents\Scripts\PowerShell\PassGen" clr-version="10.0.5" os-version="10.0.26200" nunit-version="2.5.8.0" machine-name="RSMALLEY-12PC" user="RaymonSmalley" platform="Microsoft Windows 11 Enterprise|C:\windows|\Device\Harddisk0\Partition3" />
+  <culture-info current-culture="en-US" current-uiculture="en-US" />
+  <test-suite type="TestFixture" name="Pester" executed="True" result="Failure" success="False" time="0.5045" asserts="0" description="Pester">
+    <results>
+      <test-suite type="TestFixture" name="C:\Users\rsmalley\OneDrive - 415 Group, Inc\Documents\Scripts\PowerShell\PassGen\module\PassGen2\tests\PassGen2.Tests.ps1" executed="True" result="Failure" success="False" time="0.5045" asserts="0" description="C:\Users\rsmalley\OneDrive - 415 Group, Inc\Documents\Scripts\PowerShell\PassGen\module\PassGen2\tests\PassGen2.Tests.ps1">
+        <results>
+          <test-suite type="TestFixture" name="PassGen2 module" executed="True" result="Failure" success="False" time="0.0878" asserts="0" description="PassGen2 module">
+            <results>
+              <test-case description="exports the expected public commands" name="PassGen2 module.exports the expected public commands" time="0" asserts="0" success="False" result="Failure" executed="True">
+                <failure>
+                  <message>This test should run but it did not. Most likely a setup in some parent block failed.</message>
+                  <stack-trace />
+                </failure>
+              </test-case>
+              <test-case description="exports compatibility aliases" name="PassGen2 module.exports compatibility aliases" time="0" asserts="0" success="False" result="Failure" executed="True">
+                <failure>
+                  <message>This test should run but it did not. Most likely a setup in some parent block failed.</message>
+                  <stack-trace />
+                </failure>
+              </test-case>
+              <test-case description="generates random passwords at the requested length when PassThru is used" name="PassGen2 module.generates random passwords at the requested length when PassThru is used" time="0" asserts="0" success="False" result="Failure" executed="True">
+                <failure>
+                  <message>This test should run but it did not. Most likely a setup in some parent block failed.</message>
+                  <stack-trace />
+                </failure>
+              </test-case>
+              <test-case description="accepts compact character set tokens without commas" name="PassGen2 module.accepts compact character set tokens without commas" time="0" asserts="0" success="False" result="Failure" executed="True">
+                <failure>
+                  <message>This test should run but it did not. Most likely a setup in some parent block failed.</message>
+                  <stack-trace />
+                </failure>
+              </test-case>
+              <test-case description="does not write the password to the pipeline unless PassThru is used" name="PassGen2 module.does not write the password to the pipeline unless PassThru is used" time="0" asserts="0" success="False" result="Failure" executed="True">
+                <failure>
+                  <message>This test should run but it did not. Most likely a setup in some parent block failed.</message>
+                  <stack-trace />
+                </failure>
+              </test-case>
+              <test-case description="falls back to the bundled word list when the remote source is unavailable" name="PassGen2 module.falls back to the bundled word list when the remote source is unavailable" time="0" asserts="0" success="False" result="Failure" executed="True">
+                <failure>
+                  <message>This test should run but it did not. Most likely a setup in some parent block failed.</message>
+                  <stack-trace />
+                </failure>
+              </test-case>
+              <test-case description="falls back to the bundled quote list when the remote source is unavailable" name="PassGen2 module.falls back to the bundled quote list when the remote source is unavailable" time="0" asserts="0" success="False" result="Failure" executed="True">
+                <failure>
+                  <message>This test should run but it did not. Most likely a setup in some parent block failed.</message>
+                  <stack-trace />
+                </failure>
+              </test-case>
+              <test-case description="skips invalid TEMP paths and uses the next writable location" name="PassGen2 module.skips invalid TEMP paths and uses the next writable location" time="0" asserts="0" success="False" result="Failure" executed="True">
+                <failure>
+                  <message>This test should run but it did not. Most likely a setup in some parent block failed.</message>
+                  <stack-trace />
+                </failure>
+              </test-case>
+            </results>
+          </test-suite>
+        </results>
+      </test-suite>
+    </results>
+  </test-suite>
+</test-results>
